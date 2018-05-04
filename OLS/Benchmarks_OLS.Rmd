@@ -1,0 +1,62 @@
+---
+title: "Benchmarks_OLS"
+author: "Maciej Nasinski"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document: 
+    beamer_presentation
+  html_document: 
+    ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(engine.path = list(python = reticulate::eng_python))
+library(ranger)
+library(randomForest)
+library(RcppArmadillo)
+library(RcppEigen)
+library(reticulate)
+```
+
+## Linear Regression - OLS
+
+```{r,include=T}
+airquality_large = airquality[sample(which(complete.cases(airquality)),1*10**6,TRUE),]
+X=as.matrix(airquality_large[,-1])
+y=airquality_large$Ozone
+```
+
+```{r}
+stats=microbenchmark::microbenchmark(
+lm=lm(Ozone~.,airquality_large),
+lm_arma=RcppArmadillo::fastLmPure(X=X,y=y),
+lm_eigen=RcppEigen::fastLmPure(X=X,y=y),
+lm.fit=.lm.fit(x=X,y=y),times=10)
+summary(stats,unit="s")
+```
+
+\newpage
+
+```{python}
+from sklearn import linear_model
+import time
+
+IrisP = r.airquality_large.reset_index().drop("index",1)
+X = IrisP[["Solar.R","Wind" ,"Temp","Month" ,"Day"]]
+y = IrisP["Ozone"]
+
+timeSK=list()
+for i in range(10):
+  start = time.time()
+  regr = linear_model.LinearRegression(copy_X=False,n_jobs=4)
+  # Train the model using the training sets
+  regr.fit(X, y)
+  end = time.time()
+  timeSK.append(end-start)
+  
+```
+
+```{r}
+mean(py$timeSK)
+```

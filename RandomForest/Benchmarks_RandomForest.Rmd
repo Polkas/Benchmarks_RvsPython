@@ -1,0 +1,77 @@
+---
+title: "Benchmarks_RandomForest"
+author: "Maciej Nasinski"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    ioslides_presentation
+  pdf_document: 
+    beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(engine.path = list(python = reticulate::eng_python))
+library(ranger)
+library(randomForest)
+library(RcppArmadillo)
+library(RcppEigen)
+library(reticulate)
+```
+
+## randomForest and ranger
+
+```{r,include=T}
+iris_all = lapply(1:3,function(x) iris[sample(nrow(iris),10**x,TRUE),])
+```
+
+```{r}
+resR_all = data.frame(randomForest=c(),ranger=c())
+
+for(i in 1:3){
+stats=microbenchmark::microbenchmark(
+ranger=ranger(Species~.,iris_all[[i]]),
+randomForest=randomForest(Species~.,iris_all[[i]]),
+times=10)
+resR = summary(stats,unit="s")[,"mean"]
+resR_all = rbind(resR_all,data.frame(randomForest=resR[2],ranger=resR[1]))
+}
+```
+
+## sklearn
+
+```{python}
+from sklearn.ensemble import RandomForestRegressor
+import numpy as np
+import time
+
+
+timeSK_all = list()
+for a in range(4)[1:]:
+  IrisP = r.iris.sample(10**a,replace=True).reset_index().drop("index",1)
+  X=IrisP.iloc[:,[0,1,2,3]]
+  y=IrisP["Species"].astype('category').cat.codes
+  timeSK=list()
+  for i in range(10):
+    start = time.time()
+    rf_exp = RandomForestRegressor(n_estimators= 500, random_state=100)
+    model = rf_exp.fit(X,y)
+    end = time.time()
+    timeSK.append(end-start)
+  timeSK_all.append(np.mean(timeSK))
+```
+
+## results
+
+Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+
+```{r}
+cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))
+```
+
+## results plot
+
+```{r}
+dats=cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))
+```
+
