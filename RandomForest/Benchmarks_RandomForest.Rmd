@@ -3,75 +3,166 @@ title: "Benchmarks_RandomForest"
 author: "Maciej Nasinski"
 date: "`r Sys.Date()`"
 output: 
-  html_document: 
-    ioslides_presentation
   pdf_document: 
     beamer_presentation
+  html_document: 
+    ioslides_presentation
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(engine.path = list(python = reticulate::eng_python))
 library(ranger)
 library(randomForest)
-library(RcppArmadillo)
-library(RcppEigen)
 library(reticulate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(forcats)
+set.seed(12345)
 ```
 
-## randomForest and ranger
 
 ```{r,include=T}
-iris_all = lapply(1:3,function(x) iris[sample(nrow(iris),10**x,TRUE),])
+iters=1L
+dims = cbind(c(10L**4,10L**1),c(10L**3,10L**2),c(10L**4,10L**2),c(10L**5,10L**1))
+storage.mode(dims) = "integer"
+nams =   sapply(1:ncol(dims),function(i) paste0("dims",paste0(dims[,i],collapse="_")))
 ```
 
 ```{r}
-resR_all = data.frame(randomForest=c(),ranger=c())
+time_R_RF = list(ranger=matrix(NA,iters,ncol(dims)),
+                  randomForest_pure=matrix(NA,iters,ncol(dims)))
 
-for(i in 1:3){
-stats=microbenchmark::microbenchmark(
-ranger=ranger(Species~.,iris_all[[i]]),
-randomForest=randomForest(Species~.,iris_all[[i]]),
-times=10)
-resR = summary(stats,unit="s")[,"mean"]
-resR_all = rbind(resR_all,data.frame(randomForest=resR[2],ranger=resR[1]))
+RF_models = list(expression(randomForest(x=X0,y=Y0,ntree=100))
+,expression(ranger(1~.,num.trees=100)))
+
+for(m in 1:length(time_R_RF)){
+colnames(time_R_RF[[m]]) = nams
+for(i in 1:ncol(dims)){
+mat=matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
+colnames(mat) = letters[1:dims[2,i]]
+X0=mat[,-1]
+Y0=mat[,1]
+for(a in 1:iters){
+print(a)
+start=microbenchmark::get_nanotime()
+R_RF = eval(RF_models[[m]])
+end=microbenchmark::get_nanotime()
+time_R_RF[[m]][a,i] = (end-start)/10**9
+}
+}
+
 }
 ```
 
-## sklearn
-
 ```{python}
-from sklearn.ensemble import RandomForestRegressor
 import numpy as np
+from sklearn.ensemble import RandomForestRegressor
 import time
-
-
-timeSK_all = list()
-for a in range(4)[1:]:
-  IrisP = r.iris.sample(10**a,replace=True).reset_index().drop("index",1)
-  X=IrisP.iloc[:,[0,1,2,3]]
-  y=IrisP["Species"].astype('category').cat.codes
-  timeSK=list()
-  for i in range(10):
-    start = time.time()
-    rf_exp = RandomForestRegressor(n_estimators= 500, random_state=100)
-    model = rf_exp.fit(X,y)
-    end = time.time()
-    timeSK.append(end-start)
-  timeSK_all.append(np.mean(timeSK))
+np.random.seed(12345)
+dims = r.dims
+iters= r.iters
+time_pyn_RF = [np.zeros([iters,dims.shape[1]])]
+for m in range(len(time_pyn_RF)):
+  for a in range(dims.shape[1]):
+    mat = np.random.randn(dims[1,a],dims[0,a])
+    X = np.transpose(mat[1:])
+    y = np.transpose(mat[0])
+    if m==0:
+      for i in range(iters):
+        start = time.time()
+        regr = RandomForestRegressor(n_jobs=4,n_estimators=100)
+        regr.fit(X,y)
+        end = time.time()
+        time_pyn_RF[0][i,a] = end-start
 ```
 
-## results
+
+## Random Forest - Regression
 
 Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
 
-```{r}
-cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))
+```{r,message=FALSE}
+time_pyn_RF=py$time_pyn_RF
+colnames(time_pyn_RF[[1]])=nams
+
+res = rbind(data.frame(time_R_RF[[1]],env="randomForest"),
+            data.frame(time_R_RF[[2]],env="ranger"),
+            data.frame(time_pyn_RF[[1]],env="sklearn")) 
+dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
+
+gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) + 
+  geom_violin() + 
+  facet_wrap(~key,scales = "free",ncol=2)+
+  theme(axis.text.x = element_blank()) +
+  ggtitle("Random Forest REgression time in seconds - dims rows_columns - 100 samples")
+  
+gg1
 ```
 
-## results plot
+```{r}
+ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/RF_reg.png",gg1)
+```
+
 
 ```{r}
-dats=cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))
+for(m in 1:length(time_R_RF)){
+colnames(time_R_RF[[m]]) = nams
+for(i in 1:ncol(dims)){
+mat=matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
+X0=mat[,-1]
+Y0=floor(pnorm(mat[,1])*10)
+for(a in 1:iters){
+start=microbenchmark::get_nanotime()
+R_RF = eval(RF_models[[m]])
+end=microbenchmark::get_nanotime()
+time_R_RF[[m]][a,i] = (end-start)/10**9
+}
+}
+}
+```
+
+```{python}
+time_pyn_RF = [np.zeros([iters,dims.shape[1]])]
+for m in range(len(time_pyn_RF)):
+  for a in range(dims.shape[1]):
+    mat = np.random.randn(dims[1,a],dims[0,a])
+    X = np.transpose(mat[1:])
+    y = np.floor(norm.cdf(np.transpose(mat[0]))*10)
+    if m==0:
+      for i in range(iters):
+        start = time.time()
+        regr = RandomForestClassifier(n_jobs=4,n_estimators=100)
+        regr.fit(X,y)
+        end = time.time()
+        time_pyn_RF[0][i,a] = end-start
+```
+
+
+## Random Forest - Classification
+
+Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+
+```{r,message=FALSE}
+time_pyn_RF=py$time_pyn_RF
+colnames(time_pyn_RF[[1]])=nams
+
+res = rbind(data.frame(time_R_RF[[1]],env="randomForest"),
+            data.frame(time_R_RF[[2]],env="ranger"),
+            data.frame(time_pyn_RF[[1]],env="sklearn")) 
+dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
+
+gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) + 
+  geom_violin() + 
+  facet_wrap(~key,scales = "free",ncol=2)+
+  theme(axis.text.x = element_blank()) +
+  ggtitle("Random Forest Classification time in seconds - dims rows_columns - 100 samples")
+  
+gg1
+```
+
+```{r}
+ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/RF_clas.png",gg1)
 ```
 

@@ -10,53 +10,99 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(engine.path = list(python = reticulate::eng_python))
-library(ranger)
-library(randomForest)
 library(RcppArmadillo)
-library(RcppEigen)
 library(reticulate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(forcats)
+options(scipen = 999)
+set.seed(1234)
 ```
 
-## Linear Regression - OLS
 
 ```{r,include=T}
-airquality_large = airquality[sample(which(complete.cases(airquality)),1*10**6,TRUE),]
-X=as.matrix(airquality_large[,-1])
-y=airquality_large$Ozone
+iters=100L
+dims = cbind(c(10L**4,10L**2),c(10L**3,10L**3),c(10L**5,10L**2),c(10L**6,10L**1))
+storage.mode(dims) = "integer"
+nams =   sapply(1:ncol(dims),function(i) paste0("dims",paste0(dims[,i],collapse="_")))
 ```
 
 ```{r}
-stats=microbenchmark::microbenchmark(
-lm=lm(Ozone~.,airquality_large),
-lm_arma=RcppArmadillo::fastLmPure(X=X,y=y),
-lm_eigen=RcppEigen::fastLmPure(X=X,y=y),
-lm.fit=.lm.fit(x=X,y=y),times=10)
-summary(stats,unit="s")
-```
+time_R_OLS = list(RcppArmadillo=matrix(NA,iters,ncol(dims)),
+                  RcppArmadillo_pure=matrix(NA,iters,ncol(dims)),
+                  lm.fit=matrix(NA,iters,ncol(dims)))
 
-\newpage
+OLS_models = list(expression(fastLm(X=X0,y=Y0))
+,expression(fastLmPure(X=X0,y=Y0))
+,expression(lm.fit(x=X0,y=Y0)))
+
+for(m in 1:length(time_R_OLS)){
+
+colnames(time_R_OLS[[m]]) = nams
+for(i in 1:ncol(dims)){
+mat = matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
+X0=mat[,-1]
+Y0=mat[,1]
+for(a in 1:iters){
+start=microbenchmark::get_nanotime()
+R_OLS = eval(OLS_models[[m]])
+end=microbenchmark::get_nanotime()
+time_R_OLS[[m]][a,i] = (end-start)/10**9
+}
+}
+
+}
+```
 
 ```{python}
-from sklearn import linear_model
+import numpy as np
+from sklearn.linear_model import LinearRegression
 import time
+np.random.seed(1234)
+dims = r.dims
+iters= r.iters
+time_pyn_OLS = [np.zeros([iters,dims.shape[1]])]
+for m in range(len(time_pyn_OLS)):
+  for a in range(dims.shape[1]):
+    mat = np.random.randn(dims[1,a],dims[0,a])
+    X = np.transpose(mat[1:])
+    y = np.transpose(mat[0])
+    if m==0:
+      for i in range(iters):
+        start = time.time()
+        regr = LinearRegression(fit_intercept=False,copy_X=False,n_jobs=4)
+        regr.fit(X,y)
+        end = time.time()
+        time_pyn_OLS[0][i,a] = end-start
+```
 
-IrisP = r.airquality_large.reset_index().drop("index",1)
-X = IrisP[["Solar.R","Wind" ,"Temp","Month" ,"Day"]]
-y = IrisP["Ozone"]
 
-timeSK=list()
-for i in range(10):
-  start = time.time()
-  regr = linear_model.LinearRegression(copy_X=False,n_jobs=4)
-  # Train the model using the training sets
-  regr.fit(X, y)
-  end = time.time()
-  timeSK.append(end-start)
+## Linear Regression - OLS - under QR decomposition
+
+Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+
+```{r,message=FALSE}
+time_pyn_OLS=py$time_pyn_OLS
+colnames(time_pyn_OLS[[1]])=nams
+
+res = rbind(data.frame(time_R_OLS[[1]],env="RcppArmadillo::fastLm"),
+            data.frame(time_R_OLS[[2]],env="RcppArmadillo::fastLmPure"),
+            data.frame(time_R_OLS[[3]],env="lm.fit"),
+            data.frame(time_pyn_OLS[[1]],env="sklearn")) 
+dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
+
+gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) + 
+  geom_violin() + 
+  facet_wrap(~key,scales = "free",ncol=2)+
+  theme(axis.text.x = element_blank()) +
+  ggtitle("OLS time in seconds - dims rows_columns - 100 samples")
   
+gg1
 ```
 
 ```{r}
-mean(py$timeSK)
+ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/OLS.png",gg1)
 ```

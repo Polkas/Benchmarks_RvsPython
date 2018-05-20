@@ -1,5 +1,5 @@
 ---
-title: "Benchmarks_Algebra"
+title: "Benchmarks Algebra"
 author: "Maciej Nasinski"
 date: "`r Sys.Date()`"
 output: 
@@ -10,48 +10,80 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(engine.path = list(python = reticulate::eng_python))
 library(reticulate)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(forcats)
+library(microbenchmark)
+options(scipen = 999)
+set.seed(12345)
 ```
 
-## X'X
 
 ```{r,include=T}
-mat_all = lapply(3:6,function(x) matrix(rnorm(100*10**x),nrow=10**x,ncol=100))
+iters=100L
+dims = cbind(c(10L**3,10L**3),c(10L**4,10L**3),c(10L**5,10L**2),c(10L**6,10L**2))
+storage.mode(dims) = "integer"
+nams =   sapply(1:ncol(dims),function(i) paste0("dims",paste0(dims[,i],collapse="_")))
 ```
 
 ```{r}
-for(i in 1:4){
-X0=mat_all[[i]]
-stats=microbenchmark::microbenchmark(
-R=crossprod(X0),
-times=10)
-resR = summary(stats,unit="s")[,"mean"]
-print(resR)
+time_R_XX = matrix(NA,iters,ncol(dims))
+colnames(time_R_XX) = nams
+for(i in 1:ncol(dims)){
+X0 = array(rnorm(prod(dims[,i])),dims[,i])
+for(a in 1:iters){
+start=microbenchmark::get_nanotime()
+R_XX=crossprod(X0)  
+end=microbenchmark::get_nanotime()
+time_R_XX[a,i] = (end-start)/10**9
+}
 }
 ```
 
-## sklearn
 
 ```{python}
 import numpy as np
 import time
-
-timeSK_all = list()
-X = r.mat_all
-for a in range(4):
-  X0 = X[a]
-  timeSK=list()
-  for i in range(10):
+np.random.seed(12345)
+dims = r.dims
+iters= r.iters
+time_pyn_XX = np.zeros([iters,dims.shape[1]])
+for a in range(dims.shape[1]):
+  X0 = np.random.randn(dims[0,a],dims[1,a])
+  for i in range(iters):
     start = time.time()
     model = np.matmul(np.transpose(X0),X0)
     end = time.time()
-    timeSK.append(end-start)
-  print(np.mean(timeSK))
-  timeSK_all.append(np.mean(timeSK))
+    time_pyn_XX[i,a] = end-start
 ```
 
-## results
+
+## X'X results
 
 Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+
+```{r,message=FALSE}
+time_pyn_XX=py$time_pyn_XX
+colnames(time_pyn_XX)=nams
+res = rbind(data.frame(time_R_XX,env="MRO"),data.frame(time_pyn_XX,env="numpy")) 
+dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
+
+gg1 = ggplot(dat,aes(x=env,y=time_sec,fill=env,col=env)) + 
+  geom_violin() + 
+  facet_wrap(~key,scales = "free",ncol=2)+
+  theme(axis.text.x = element_blank()) +
+  ggtitle("X'X time in seconds - dims rows_columns - 100 samples")
+  
+gg1
+```
+
+
+
+```{r}
+ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/Algebra_XX.png",gg1)
+```
+

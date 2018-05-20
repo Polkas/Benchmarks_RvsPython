@@ -10,7 +10,7 @@
 
 
 
-  <meta name="date" content="2018-05-05" />
+  <meta name="date" content="2018-05-20" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -94,17 +94,17 @@
       <h1 data-config-title><!-- populated from slide_config.json --></h1>
       <h2 data-config-subtitle><!-- populated from slide_config.json --></h2>
       <p data-config-presenter><!-- populated from slide_config.json --></p>
-            <p style="margin-top: 6px; margin-left: -2px;">2018-05-05</p>
+            <p style="margin-top: 6px; margin-left: -2px;">2018-05-20</p>
           </hgroup>
   </slide>
 
 <slide class=""><hgroup><h2>randomForest and ranger</h2></hgroup><article  id="randomforest-and-ranger">
 
-<pre class = 'prettyprint lang-r'>iris_all = lapply(1:5,function(x) iris[sample(nrow(iris),10**x,TRUE),])</pre>
+<pre class = 'prettyprint lang-r'>iris_all = lapply(1:3,function(x) iris[sample(nrow(iris),10**x,TRUE),])</pre>
 
 <pre class = 'prettyprint lang-r'>resR_all = data.frame(randomForest=c(),ranger=c())
 
-for(i in 1:5){
+for(i in 1:3){
 stats=microbenchmark::microbenchmark(
 ranger=ranger(Species~.,iris_all[[i]]),
 randomForest=randomForest(Species~.,iris_all[[i]]),
@@ -119,7 +119,7 @@ resR_all = rbind(resR_all,data.frame(randomForest=resR[2],ranger=resR[1]))
 import numpy as np
 import time
 timeSK_all = list()
-for a in range(6)[1:]:
+for a in range(4)[1:]:
   IrisP = r.iris.sample(10**a,replace=True).reset_index().drop(&quot;index&quot;,1)
   X=IrisP.iloc[:,[0,1,2,3]]
   y=IrisP[&quot;Species&quot;].astype(&#39;category&#39;).cat.codes
@@ -130,65 +130,22 @@ for a in range(6)[1:]:
     model = rf_exp.fit(X,y)
     end = time.time()
     timeSK.append(end-start)
-    timeSK_all.append(np.mean(timeSK))</pre>
+  timeSK_all.append(np.mean(timeSK))</pre>
 
 </article></slide><slide class=""><hgroup><h2>results</h2></hgroup><article  id="results">
 
 <p>Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133</p>
 
-<pre class = 'prettyprint lang-r'>cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:5)))</pre>
+<pre class = 'prettyprint lang-r'>cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))</pre>
 
-<pre >##    randomForest     ranger    sklearn  nobs
-## 1    0.03238982 0.03525991  0.3751292 1e+01
-## 2    0.01931090 0.01432052  0.3785282 1e+02
-## 3    0.18879474 0.03594636  0.3833729 1e+03
-## 4    1.46546254 0.22012809  0.3928671 1e+04
-## 5   15.70190534 3.95386594  0.3953632 1e+05
-## 6    0.03238982 0.03525991  0.3920254 1e+01
-## 7    0.01931090 0.01432052  0.3984755 1e+02
-## 8    0.18879474 0.03594636  0.3977019 1e+03
-## 9    1.46546254 0.22012809  0.3964217 1e+04
-## 10  15.70190534 3.95386594  0.3961748 1e+05
-## 11   0.03238982 0.03525991  0.4128585 1e+01
-## 12   0.01931090 0.01432052  0.3941644 1e+02
-## 13   0.18879474 0.03594636  0.3934151 1e+03
-## 14   1.46546254 0.22012809  0.3871602 1e+04
-## 15  15.70190534 3.95386594  0.3841023 1e+05
-## 16   0.03238982 0.03525991  0.3868413 1e+01
-## 17   0.01931090 0.01432052  0.3876098 1e+02
-## 18   0.18879474 0.03594636  0.3886449 1e+03
-## 19   1.46546254 0.22012809  0.3899350 1e+04
-## 20  15.70190534 3.95386594  0.3894086 1e+05
-## 21   0.03238982 0.03525991  0.4962163 1e+01
-## 22   0.01931090 0.01432052  0.4889113 1e+02
-## 23   0.18879474 0.03594636  0.4858316 1e+03
-## 24   1.46546254 0.22012809  0.4858309 1e+04
-## 25  15.70190534 3.95386594  0.4897247 1e+05
-## 26   0.03238982 0.03525991  0.4891941 1e+01
-## 27   0.01931090 0.01432052  0.4909216 1e+02
-## 28   0.18879474 0.03594636  0.4903491 1e+03
-## 29   1.46546254 0.22012809  0.4916304 1e+04
-## 30  15.70190534 3.95386594  0.4896456 1e+05
-## 31   0.03238982 0.03525991  1.2964406 1e+01
-## 32   0.01931090 0.01432052  1.2874142 1e+02
-## 33   0.18879474 0.03594636  1.3017151 1e+03
-## 34   1.46546254 0.22012809  1.3076050 1e+04
-## 35  15.70190534 3.95386594  1.3047457 1e+05
-## 36   0.03238982 0.03525991  1.3056019 1e+01
-## 37   0.01931090 0.01432052  1.3130007 1e+02
-## 38   0.18879474 0.03594636  1.3157258 1e+03
-## 39   1.46546254 0.22012809  1.3128691 1e+04
-## 40  15.70190534 3.95386594  1.3140232 1e+05
-## 41   0.03238982 0.03525991 11.1313658 1e+01
-## 42   0.01931090 0.01432052 11.2941155 1e+02
-## 43   0.18879474 0.03594636 11.3596345 1e+03
-## 44   1.46546254 0.22012809 11.6111364 1e+04
-## 45  15.70190534 3.95386594 11.5960567 1e+05
-## 46   0.03238982 0.03525991 11.6625990 1e+01
-## 47   0.01931090 0.01432052 11.5811545 1e+02
-## 48   0.18879474 0.03594636 11.4456704 1e+03
-## 49   1.46546254 0.22012809 11.3201039 1e+04
-## 50  15.70190534 3.95386594 11.2284014 1e+05</pre></article></slide>
+<pre >##   randomForest     ranger   sklearn nobs
+## 1   0.02819040 0.03364111 0.3620710   10
+## 2   0.01506672 0.01494559 0.3799499  100
+## 3   0.24519395 0.03186140 0.4853064 1000</pre>
+
+</article></slide><slide class=""><hgroup><h2>results plot</h2></hgroup><article  id="results-plot">
+
+<pre class = 'prettyprint lang-r'>dats=cbind(resR_all,sklearn=unlist(py$timeSK_all),nobs=10**(c(1:3)))</pre></article></slide>
 
 
   <slide class="backdrop"></slide>
