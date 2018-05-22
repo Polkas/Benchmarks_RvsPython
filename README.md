@@ -19,7 +19,14 @@ So time growing linear with additional rows and quadratic with additional column
 
 ![](./png/Algebra_XX.png)
 
-### OLS
+### Algebra - solve linear system with a left multiplication by X'
+
+XB=Y - mostly it is a overdetermined system   
+or X'XB=X'Y - where X'X is a square matrix
+
+![](./png/solve.png)
+
+### OLS - Ordinary Least Squares
 
 OLS consists of solving linear systems with usage of cholesky,QR or LU matrix decomposition
 

@@ -82,8 +82,79 @@ gg1
 ```
 
 
-
 ```{r}
 ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/Algebra_XX.png",gg1)
 ```
 
+
+```{r}
+time_R_solve = list(
+                  base_solve=matrix(NA,iters,ncol(dims)))
+
+solve_models = list(expression(base::solve(crossprod(X0),t(X0)%*%Y0)))
+
+for(m in 1:length(time_R_solve)){
+
+colnames(time_R_solve[[m]]) = nams
+for(i in 1:ncol(dims)){
+mat = matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
+X0=mat[,-1]
+Y0=mat[,1]
+for(a in 1:iters){
+start=microbenchmark::get_nanotime()
+R_solve = eval(solve_models[[m]])
+end=microbenchmark::get_nanotime()
+time_R_solve[[m]][a,i] = (end-start)/10**9
+}
+}
+
+}
+```
+
+```{python}
+import numpy as np
+from numpy.linalg import solve
+import time
+np.random.seed(1234)
+dims = r.dims
+iters= r.iters
+time_pyn_solve = [np.zeros([iters,dims.shape[1]])]
+for m in range(len(time_pyn_solve)):
+  for a in range(dims.shape[1]):
+    mat = np.random.randn(dims[1,a],dims[0,a])
+    X = np.transpose(mat[1:])
+    y = np.transpose(mat[0])
+    if m==0:
+      for i in range(iters):
+        start = time.time()
+        s = solve(np.matmul(np.transpose(X),X),np.matmul(np.transpose(X),y))
+        end = time.time()
+        time_pyn_solve[0][i,a] = end-start
+```
+
+
+## solve XB=Y
+
+Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+
+```{r,message=FALSE}
+time_pyn_solve=py$time_pyn_solve
+colnames(time_pyn_solve[[1]])=nams
+
+res = rbind(
+            data.frame(time_R_solve[[1]],env="base::solve"),
+            data.frame(time_pyn_solve[[1]],env="numpy")) 
+dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
+
+gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) + 
+  geom_violin() + 
+  facet_wrap(~key,scales = "free",ncol=2)+
+  theme(axis.text.x = element_blank()) +
+  ggtitle("solve time in seconds - dims rows_columns - 100 samples")
+  
+gg1
+```
+
+```{r}
+ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/solve.png",gg1)
+```
