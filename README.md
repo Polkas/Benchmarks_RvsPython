@@ -1,4 +1,4 @@
-# Benchmarks R vs Python
+# Benchmarks R vs Python - There's no difference 
 
 Using RStudio and the reticulate package to benchmark important algorithms across R and Python environments
 
@@ -38,9 +38,9 @@ Example under QR decomposition:
 
 ### Random Forest
 
-![](./RF_creg.png)
+![](./png/RF_reg.png)
 
-![](./RF_clas.png)
+![](./png/RF_clas.png)
 
 ### NN
 
