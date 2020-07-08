@@ -3,8 +3,6 @@ title: "Benchmarks_RandomForest"
 author: "Maciej Nasinski"
 date: "`r Sys.Date()`"
 output: 
-  pdf_document: 
-    beamer_presentation
   html_document: 
     ioslides_presentation
 ---
@@ -23,25 +21,29 @@ set.seed(12345)
 ```
 
 
-```{r,include=T}
-iters=1L
-dims = cbind(c(10L**4,10L**1),c(10L**3,10L**2),c(10L**4,10L**2),c(10L**5,10L**1))
-storage.mode(dims) = "integer"
+```{r, include = T}
+iters=30L
+n_trees = 30
+dims = cbind(c(10L**4,10L**1),c(10L**3,10L**2),c(10L**4,5*10L**1),c(10L**4,10L**2))
+mode(dims) = "integer"
 nams =   sapply(1:ncol(dims),function(i) paste0("dims",paste0(dims[,i],collapse="_")))
 ```
 
 ```{r}
-time_R_RF = list(ranger=matrix(NA,iters,ncol(dims)),
-                  randomForest_pure=matrix(NA,iters,ncol(dims)))
+time_R_RF = list(randomForest_pure=matrix(NA,iters,ncol(dims)),
+                 ranger=matrix(NA,iters,ncol(dims))
+                  )
 
-RF_models = list(expression(randomForest(x=X0,y=Y0,ntree=100))
-,expression(ranger(1~.,num.trees=100)))
+RF_models = list(
+                 expression(randomForest(y=Y0,x=X0,ntree=100, mtry = floor(sqrt(N_col)))),
+                 expression(ranger(x=X0,y=Y0,num.trees=100, mtry = floor(sqrt(N_col)))))
 
 for(m in 1:length(time_R_RF)){
 colnames(time_R_RF[[m]]) = nams
 for(i in 1:ncol(dims)){
 mat=matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
-colnames(mat) = letters[1:dims[2,i]]
+colnames(mat) <- as.character(1:1000)[1:dims[2,i]]
+N_col = dims[2,i] - 1
 X0=mat[,-1]
 Y0=mat[,1]
 for(a in 1:iters){
@@ -72,7 +74,7 @@ for m in range(len(time_pyn_RF)):
     if m==0:
       for i in range(iters):
         start = time.time()
-        regr = RandomForestRegressor(n_jobs=4,n_estimators=100)
+        regr = RandomForestRegressor(n_jobs=4,n_estimators=100,max_features='sqrt')
         regr.fit(X,y)
         end = time.time()
         time_pyn_RF[0][i,a] = end-start
@@ -81,7 +83,7 @@ for m in range(len(time_pyn_RF)):
 
 ## Random Forest - Regression
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: R 3.6.3 i7 6700HQ 24G DDR4 2133
 
 ```{r,message=FALSE}
 time_pyn_RF=py$time_pyn_RF
@@ -96,13 +98,13 @@ gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) +
   geom_violin() + 
   facet_wrap(~key,scales = "free",ncol=2)+
   theme(axis.text.x = element_blank()) +
-  ggtitle("Random Forest REgression time in seconds - dims rows_columns - 100 samples")
+  ggtitle("Random Forest Regression time in seconds -dimsrows_columns- 100 samples\nmtry=sqrt(Ncol) and ntree=100")
   
 gg1
 ```
 
 ```{r}
-ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/RF_reg.png",gg1)
+ggsave("~/Desktop/own_R_packages/RPbenchmarks/png/RF_reg.png",gg1)
 ```
 
 
@@ -111,8 +113,10 @@ for(m in 1:length(time_R_RF)){
 colnames(time_R_RF[[m]]) = nams
 for(i in 1:ncol(dims)){
 mat=matrix(rnorm(prod(dims[,i])),dims[1,i],dims[2,i])
+colnames(mat) <- as.character(1:1000)[1:dims[2,i]]
+N_col = dims[2,i] - 1
 X0=mat[,-1]
-Y0=floor(pnorm(mat[,1])*10)
+Y0=factor(floor(pnorm(mat[,1])*10))
 for(a in 1:iters){
 start=microbenchmark::get_nanotime()
 R_RF = eval(RF_models[[m]])
@@ -124,6 +128,8 @@ time_R_RF[[m]][a,i] = (end-start)/10**9
 ```
 
 ```{python}
+from scipy.stats import norm
+from sklearn.ensemble import RandomForestClassifier
 time_pyn_RF = [np.zeros([iters,dims.shape[1]])]
 for m in range(len(time_pyn_RF)):
   for a in range(dims.shape[1]):
@@ -133,7 +139,7 @@ for m in range(len(time_pyn_RF)):
     if m==0:
       for i in range(iters):
         start = time.time()
-        regr = RandomForestClassifier(n_jobs=4,n_estimators=100)
+        regr = RandomForestClassifier(n_jobs=4,n_estimators=100,max_features='sqrt')
         regr.fit(X,y)
         end = time.time()
         time_pyn_RF[0][i,a] = end-start
@@ -142,7 +148,7 @@ for m in range(len(time_pyn_RF)):
 
 ## Random Forest - Classification
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: R 3.6.3 i7 6700HQ 24G DDR4 2133
 
 ```{r,message=FALSE}
 time_pyn_RF=py$time_pyn_RF
@@ -157,12 +163,12 @@ gg1 = ggplot(dat,aes(y=time_sec,x=env,fill=env,col=env)) +
   geom_violin() + 
   facet_wrap(~key,scales = "free",ncol=2)+
   theme(axis.text.x = element_blank()) +
-  ggtitle("Random Forest Classification time in seconds - dims rows_columns - 100 samples")
+  ggtitle("Random Forest Classification time in seconds - dims rows_columns - 100 samples\nmtry=sqrt(N) and ntree=100")
   
 gg1
 ```
 
 ```{r}
-ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/RF_clas.png",gg1)
+ggsave("~/Desktop/own_R_packages/RPbenchmarks/png/RF_clas.png",gg1)
 ```
 

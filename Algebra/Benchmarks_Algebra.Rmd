@@ -5,8 +5,6 @@ date: "`r Sys.Date()`"
 output: 
   html_document: 
     ioslides_presentation
-  pdf_document: 
-    beamer_presentation
 ---
 
 ```{r setup, include=FALSE}
@@ -64,12 +62,12 @@ for a in range(dims.shape[1]):
 
 ## X'X results
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: R 3.6.3 i7 6700HQ 24G DDR4 2133
 
 ```{r,message=FALSE}
 time_pyn_XX=py$time_pyn_XX
 colnames(time_pyn_XX)=nams
-res = rbind(data.frame(time_R_XX,env="MRO"),data.frame(time_pyn_XX,env="numpy")) 
+res = rbind(data.frame(time_R_XX,env="R"),data.frame(time_pyn_XX,env="numpy")) 
 dat = res %>% gather(key,time_sec,-env) %>% mutate(key = fct_reorder(factor(key),time_sec))
 
 gg1 = ggplot(dat,aes(x=env,y=time_sec,fill=env,col=env)) + 
@@ -83,7 +81,7 @@ gg1
 
 
 ```{r}
-ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/Algebra_XX.png",gg1)
+ggsave("~/Desktop/own_R_packages/RPbenchmarks/png/Algebra_XX.png",gg1)
 ```
 
 
@@ -135,7 +133,7 @@ for m in range(len(time_pyn_solve)):
 
 ## solve XB=Y
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: R 3.6.3 i7 6700HQ 24G DDR4 2133
 
 ```{r,message=FALSE}
 time_pyn_solve=py$time_pyn_solve
@@ -156,5 +154,5 @@ gg1
 ```
 
 ```{r}
-ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/solve.png",gg1)
+ggsave("~/Desktop/own_R_packages/RPbenchmarks/png/solve.png",gg1)
 ```

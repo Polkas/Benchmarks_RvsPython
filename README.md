@@ -4,7 +4,9 @@ Using RStudio and the reticulate package to benchmark important algorithms acros
 
 [**reticulate**](http://blog.rstudio.com/2018/03/26/reticulate-r-interface-to-python/)
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: Ubuntu 18 openblas R 3.6.3 python 3.7.4 i7 6700HQ 24G DDR4 2133
+
+`sudo apt-get install libopenblas-dev`
 
 Hypothesis: There is no significant gap in an algorithms performance between R and Python environments.
 
@@ -35,6 +37,10 @@ Example under QR decomposition:
 ![](./png/OLS.png)
 
 ### Random Forest
+
+![](./RF_creg.png)
+
+![](./RF_clas.png)
 
 ### NN
 

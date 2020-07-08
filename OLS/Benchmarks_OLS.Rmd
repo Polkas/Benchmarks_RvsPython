@@ -3,8 +3,6 @@ title: "Benchmarks_OLS"
 author: "Maciej Nasinski"
 date: "`r Sys.Date()`"
 output: 
-  pdf_document: 
-    beamer_presentation
   html_document: 
     ioslides_presentation
 ---
@@ -82,7 +80,7 @@ for m in range(len(time_pyn_OLS)):
 
 ## Linear Regression - OLS - under QR decomposition
 
-Environment: MRO 3.4.4 i7 6700HQ 24G DDR4 2133
+Environment: R 3.6.3 i7 6700HQ 24G DDR4 2133
 
 ```{r,message=FALSE}
 time_pyn_OLS=py$time_pyn_OLS
@@ -104,5 +102,5 @@ gg1
 ```
 
 ```{r}
-ggsave("C:/Users/user/Desktop/own_R_packages/RPbenchmarks/png/OLS.png",gg1)
+ggsave("~/Desktop/own_R_packages/RPbenchmarks/png/OLS.png",gg1)
 ```
